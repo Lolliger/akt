@@ -15,3 +15,7 @@ app.appendChild(renderConnectionForm(rack));
 const front = renderRackView(rack, "front");
 front.classList.add("sheet");
 app.appendChild(front);
+
+const rear = renderRackView(rack, "rear");
+rear.classList.add("sheet", "sheet--spaced");
+app.appendChild(rear);
