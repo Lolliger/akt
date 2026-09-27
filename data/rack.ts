@@ -12,7 +12,9 @@
  * DMX-Feinverkabelung folgen, sobald sie vor Ort erfasst sind.
  */
 import type { BlankPanel, Connection, Device, Port, Rack } from "../src/model/types";
+import { applyPortLabelOverrides } from "../src/model/lookup";
 import connectionsData from "./connections.json";
+import portLabelsData from "./portLabels.json";
 
 /** Erzeugt eine Reihe durchnummerierter Ports (z.B. für Patchpanel/Switch). */
 function portRow(
@@ -37,6 +39,39 @@ function portRow(
   });
 }
 
+/**
+ * Erzeugt Port-Paare für ein durchgehendes Patchpanel: Front- und Rückport
+ * mit gleicher Nummer sind physisch derselbe Durchgang, keine eigene
+ * Verbindung nötig. Der Front-Port behält die bisherige ID (pp1.05) für
+ * Abwärtskompatibilität mit bestehenden Connections, der Rückport bekommt
+ * eine eigene ID (pp1.05.rear).
+ */
+function throughPortRow(deviceId: string, count: number, portKind: Port["portKind"]): Port[] {
+  return Array.from({ length: count }, (_, i) => {
+    const n = i + 1;
+    const label = String(n).padStart(2, "0");
+    const front: Port = {
+      id: `${deviceId}.${label}`,
+      holderId: deviceId,
+      holderType: "device",
+      label,
+      face: "front",
+      portKind,
+      order: n,
+    };
+    const rear: Port = {
+      id: `${deviceId}.${label}.rear`,
+      holderId: deviceId,
+      holderType: "device",
+      label,
+      face: "rear",
+      portKind,
+      order: n,
+    };
+    return [front, rear];
+  }).flat();
+}
+
 const netzverteilung: Device = {
   id: "power",
   kind: "device",
@@ -57,8 +92,8 @@ const patchpanel1: Device = {
   positionStartHU: 2,
   heightHU: 1,
   notes:
-    "Signaltyp je Port hängt von der jeweiligen Belegung ab und wird erst mit der Aula-Zuordnung bekannt.",
-  ports: portRow("pp1", 24, "rj45", "front"),
+    "Signaltyp je Port hängt von der jeweiligen Belegung ab und wird erst mit der Aula-Zuordnung bekannt. Front- und Rückport mit gleicher Nummer sind derselbe Durchgang (Patchpanel), keine eigene Verbindung.",
+  ports: throughPortRow("pp1", 24, "rj45"),
 };
 
 const patchpanel2: Device = {
@@ -69,8 +104,8 @@ const patchpanel2: Device = {
   positionStartHU: 3,
   heightHU: 1,
   notes:
-    "Signaltyp je Port hängt von der jeweiligen Belegung ab und wird erst mit der Aula-Zuordnung bekannt.",
-  ports: portRow("pp2", 24, "rj45", "front"),
+    "Signaltyp je Port hängt von der jeweiligen Belegung ab und wird erst mit der Aula-Zuordnung bekannt. Front- und Rückport mit gleicher Nummer sind derselbe Durchgang (Patchpanel), keine eigene Verbindung.",
+  ports: throughPortRow("pp2", 24, "rj45"),
 };
 
 const swTon: Device = {
@@ -538,3 +573,9 @@ export const rack: Rack = {
   // ohne Code zu bearbeiten. Siehe connections.json + vite.config.ts.
   connections: connectionsData as Connection[],
 };
+
+// Vom Nutzer im Browser per Doppelklick vergebene Port-Beschriftungen
+// (data/portLabels.json + /api/port-labels) überschreiben die Standard-
+// Labels oben, z.B. damit ein Patchpanel-Port statt "05" einen sprechenden
+// Namen tragen kann, ohne Code zu bearbeiten.
+applyPortLabelOverrides(rack, portLabelsData as Record<string, string>);

@@ -319,7 +319,12 @@ function deviceGroup(device: Device, rect: Rect, dashed: boolean) {
 
 function portGroup(portLayout: { port: Port; rect: Rect }) {
   const { port, rect } = portLayout;
-  const g = svgEl("g");
+  const g = svgEl("g", { style: "cursor: pointer;", "data-port-id": port.id });
+  g.appendChild(svgEl("title", {}, ["Doppelklick zum Umbenennen"]));
+  g.addEventListener("dblclick", (event) => {
+    event.stopPropagation();
+    void editPortLabel(port);
+  });
   const accentHeight = 1.1;
 
   g.appendChild(
@@ -353,6 +358,31 @@ function portGroup(portLayout: { port: Port; rect: Rect }) {
     }),
   );
   return g;
+}
+
+/**
+ * Fragt per Prompt eine neue Beschriftung ab und speichert sie über den
+ * lokalen Dev-Endpunkt (/api/port-labels, siehe vite.config.ts) in
+ * data/portLabels.json - damit z.B. Patchpanel-Ports statt "05" einen
+ * sprechenden Namen bekommen können, ohne Code zu bearbeiten.
+ */
+async function editPortLabel(port: Port): Promise<void> {
+  const next = window.prompt("Neue Beschriftung für diesen Port:", port.label);
+  if (next === null) return; // abgebrochen
+  const trimmed = next.trim();
+  if (!trimmed || trimmed === port.label) return;
+
+  try {
+    const res = await fetch("/api/port-labels", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ portId: port.id, label: trimmed }),
+    });
+    if (!res.ok) throw new Error(`Server antwortete mit ${res.status}`);
+    location.reload();
+  } catch (err) {
+    window.alert(`Fehler beim Speichern: ${String(err)}`);
+  }
 }
 
 /**

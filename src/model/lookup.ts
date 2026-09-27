@@ -41,6 +41,20 @@ export function describePort(rack: Rack, port: Port): string {
   return `${holderName} · ${port.label}`;
 }
 
+/**
+ * Überschreibt Port-Labels mit vom Nutzer im Browser vergebenen Namen
+ * (siehe data/portLabels.json + /api/port-labels), damit z.B. Patchpanel-
+ * Ports statt "05" einen sprechenden Namen tragen können, ohne Code zu
+ * bearbeiten. Verändert die Ports in place.
+ */
+export function applyPortLabelOverrides(rack: Rack, overrides: Record<string, string>): void {
+  const index = buildPortIndex(rack);
+  for (const [portId, label] of Object.entries(overrides)) {
+    const port = index.get(portId);
+    if (port) port.label = label;
+  }
+}
+
 /** Alle Ports gruppiert nach Gerät/externer Gegenstelle, für Auswahllisten im UI. */
 export function groupPortsByHolder(rack: Rack): { holderName: string; ports: Port[] }[] {
   const groups: { holderName: string; ports: Port[] }[] = [];
