@@ -2,7 +2,7 @@
   {
     "id": "conn-ahm16-swton",
     "displayId": "K001",
-    "portAId": "ahm16.net",
+    "portAId": "ahm16.dante-primary",
     "portBId": "sw-ton.01",
     "cableType": "cat6",
     "status": "bestaetigt",
@@ -21,7 +21,7 @@
     "id": "conn-recorder-node2",
     "displayId": "K003",
     "portAId": "dmx-recorder.out",
-    "portBId": "dmx-node-2.dmx-in",
+    "portBId": "dmx-node-2.dmx-1",
     "cableType": "dmx-cable",
     "status": "bestaetigt",
     "description": "Recorder-Output geht über den zweiten Node ins Netzwerk (welcher Switch-Port dahinter liegt, ist noch offen)."
