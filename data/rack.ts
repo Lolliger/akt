@@ -321,7 +321,7 @@ const ahm16: Device = {
   heightHU: 1,
   properties: { "option-karte": "Dante 64x64" },
   notes:
-    "Grundgerät-Ports laut A&H-Datenblatt/Getting-Started-Guide gesichert. Dante-Karten-Portmuster (Primary/Secondary/Control Network, 3x EtherCON) von anderen A&H-Dante-Karten übernommen - für dieses konkrete Karten-Modell noch vor Ort zu bestätigen. Welche Netzwerke an Control-Network/DX-Port hängen, ist ebenfalls noch offen.",
+    "Grundgerät-Ports laut A&H-Datenblatt/Getting-Started-Guide gesichert. Dante-Karte bestätigt: nur Primary/Secondary (kein separates Control Network auf der Karte). Welche Netzwerke an Control-Network/DX-Port des Grundgeräts hängen, ist noch offen.",
   ports: [
     {
       id: "ahm16.dante-primary",
@@ -346,17 +346,6 @@ const ahm16: Device = {
       description: "Dante Secondary - EtherCON, Redundanz-Port der Dante-Karte, vermutlich ungenutzt.",
     },
     {
-      id: "ahm16.dante-ctrl",
-      holderId: "ahm16",
-      holderType: "device",
-      label: "Dante Ctrl",
-      face: "rear",
-      portKind: "rj45",
-      signalType: "unbekannt",
-      order: 3,
-      description: "Dante Control Network - EtherCON, für Dante Controller Software.",
-    },
-    {
       id: "ahm16.control-net",
       holderId: "ahm16",
       holderType: "device",
@@ -364,7 +353,7 @@ const ahm16: Device = {
       face: "rear",
       portKind: "rj45",
       signalType: "unbekannt",
-      order: 4,
+      order: 3,
       description: "Control Network - RJ45 am Grundgerät, TCP/IP-Steuerung (System Manager) - eigenes Netzwerk oder gemeinsam mit Ton-Netzwerk? Noch zu prüfen.",
     },
     {
@@ -375,7 +364,7 @@ const ahm16: Device = {
       face: "rear",
       portKind: "rj45",
       signalType: "unbekannt",
-      order: 5,
+      order: 4,
       description: "Für DX-Expander-Einheiten, aktuell vermutlich ungenutzt.",
     },
     {
@@ -386,7 +375,7 @@ const ahm16: Device = {
       face: "rear",
       portKind: "phoenix",
       signalType: "unbekannt",
-      order: 6,
+      order: 5,
       description: "2x Eingang (gegen Masse), 2x Relaisausgang, 10V DC - aktuell vermutlich ungenutzt.",
     },
     ...Array.from({ length: 8 }, (_, i) => ({
@@ -397,7 +386,7 @@ const ahm16: Device = {
       face: "rear" as const,
       portKind: "phoenix" as const,
       signalType: "audio-analog" as const,
-      order: 7 + i,
+      order: 6 + i,
     })),
     ...Array.from({ length: 8 }, (_, i) => ({
       id: `ahm16.out-${i + 1}`,
@@ -407,7 +396,7 @@ const ahm16: Device = {
       face: "rear" as const,
       portKind: "phoenix" as const,
       signalType: "audio-analog" as const,
-      order: 15 + i,
+      order: 14 + i,
     })),
   ],
 };
