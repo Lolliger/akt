@@ -16,10 +16,12 @@ export interface ItemLayout {
 export interface RackViewLayout {
   rack: Rack;
   face: "front" | "rear";
-  /** Gesamtabmessungen der Zeichenfläche in mm, inkl. Rand für die HE-Beschriftung. */
+  /** Gesamtabmessungen der Zeichenfläche in mm, inkl. Rand für die HE-Beschriftung und lose Geräte. */
   canvasWidthMm: number;
   canvasHeightMm: number;
   /** Rahmen des eigentlichen 19"-Racks (ohne Beschriftungsrand). */
   frame: Rect;
   items: ItemLayout[];
+  /** Geräte ohne feste HE-Position, unterhalb des Rack-Rahmens dargestellt. */
+  looseItems: ItemLayout[];
 }

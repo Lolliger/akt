@@ -9,7 +9,8 @@ const LANE_SPACING_MM = 5;
 export interface RoutedConnection {
   connection: Connection;
   path: string;
-  labelPos: { x: number; y: number };
+  /** Natürliche Höhe für die Beschriftung, bevor Kollisionsvermeidung greift. */
+  labelY: number;
 }
 
 export interface ConnectionStub {
@@ -41,7 +42,7 @@ export function routeConnections(
 ): RoutingResult {
   const portIndex = buildPortIndex(rack);
   const visiblePorts = new Map<string, PortLayout>();
-  for (const item of layout.items) {
+  for (const item of [...layout.items, ...layout.looseItems]) {
     for (const portLayout of item.ports) {
       visiblePorts.set(portLayout.port.id, portLayout);
     }
@@ -94,14 +95,15 @@ function buildRoutedConnection(
     `L ${exitB} ${yB}`,
   ].join(" ");
 
-  // Label knapp unter der oberen Ecke platzieren statt auf der Zeilenmitte:
-  // die Mitte zwischen zwei beliebigen Ports kann zufällig auf einer fremden
-  // Gerätezeile (und damit z.B. auf einem Stub-Label) landen.
+  // Anker knapp unter der oberen Ecke statt auf der Zeilenmitte: die Mitte
+  // zwischen zwei beliebigen Ports kann zufällig auf einer fremden
+  // Gerätezeile landen. Die endgültige Position bekommt noch eine
+  // Kollisionsvermeidung verpasst (siehe placeLabels in renderRackView).
   const labelY = Math.min(yA, yB) + 3;
 
   return {
     connection,
     path,
-    labelPos: { x: laneX, y: labelY },
+    labelY,
   };
 }

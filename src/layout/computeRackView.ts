@@ -1,7 +1,10 @@
 import { HU_HEIGHT_MM } from "../model/constants";
 import { isDevice } from "../model/types";
-import type { Face, Port, Rack, RackItem } from "../model/types";
+import type { Device, Face, Port, Rack, RackItem } from "../model/types";
 import {
+  LOOSE_AREA_GAP_MM,
+  LOOSE_DEVICE_GAP_MM,
+  LOOSE_DEVICE_WIDTH_MM,
   PORT_GAP_MM,
   PORT_HEIGHT_MM,
   PORT_MAX_WIDTH_MM,
@@ -17,7 +20,10 @@ import type { ItemLayout, PortLayout, RackViewLayout } from "./types";
  * Berechnet die Geometrie einer Rack-Ansicht (vorne oder hinten).
  * Y-Positionen ergeben sich direkt aus dem HE-Raster, X-Positionen der Ports
  * aus ihrer Reihenfolge innerhalb des Geräts – ein echtes Graph-Layout ist
- * nicht nötig, da alle Positionen physisch vorgegeben sind.
+ * nicht nötig, da alle Positionen physisch vorgegeben sind. Geräte, die sich
+ * eine HE teilen (columnIndex/columnCount), bekommen einen entsprechenden
+ * Ausschnitt der Rack-Breite. Lose Geräte ohne feste HE-Position werden
+ * unterhalb des Rahmens in eigenen Boxen dargestellt.
  */
 export function computeRackViewLayout(rack: Rack, face: Face): RackViewLayout {
   const frame: Rect = {
@@ -34,13 +40,24 @@ export function computeRackViewLayout(rack: Rack, face: Face): RackViewLayout {
     computeItemLayout(item, face, innerX, innerWidth, frame.y),
   );
 
+  let looseY = frame.y + frame.height + LOOSE_AREA_GAP_MM;
+  const looseItems = rack.looseDevices.map((device) => {
+    const layout = computeLooseItemLayout(device, face, innerX, looseY);
+    looseY += HU_HEIGHT_MM + LOOSE_DEVICE_GAP_MM;
+    return layout;
+  });
+
+  const canvasHeightMm =
+    rack.looseDevices.length > 0 ? looseY - LOOSE_DEVICE_GAP_MM : frame.y + frame.height;
+
   return {
     rack,
     face,
     canvasWidthMm: frame.x + frame.width,
-    canvasHeightMm: frame.y + frame.height,
+    canvasHeightMm,
     frame,
     items,
+    looseItems,
   };
 }
 
@@ -51,11 +68,18 @@ function computeItemLayout(
   innerWidth: number,
   frameY: number,
 ): ItemLayout {
+  let x = innerX;
+  let width = innerWidth;
+  if (isDevice(item) && item.columnCount && item.columnCount > 1) {
+    width = innerWidth / item.columnCount;
+    x = innerX + (item.columnIndex ?? 0) * width;
+  }
+
   const rect: Rect = {
-    x: innerX,
-    y: frameY + (item.positionStartHU - 1) * HU_HEIGHT_MM,
-    width: innerWidth,
-    height: item.heightHU * HU_HEIGHT_MM,
+    x,
+    y: frameY + ((item.positionStartHU ?? 0) - 1) * HU_HEIGHT_MM,
+    width,
+    height: (item.heightHU ?? 1) * HU_HEIGHT_MM,
   };
 
   if (!isDevice(item)) {
@@ -67,6 +91,21 @@ function computeItemLayout(
     .sort((a, b) => a.order - b.order);
 
   return { item, rect, ports: layoutPortRow(relevantPorts, rect) };
+}
+
+function computeLooseItemLayout(
+  device: Device,
+  face: Face,
+  x: number,
+  y: number,
+): ItemLayout {
+  const rect: Rect = { x, y, width: LOOSE_DEVICE_WIDTH_MM, height: HU_HEIGHT_MM };
+
+  const relevantPorts = device.ports
+    .filter((p) => (p.face ?? "front") === face)
+    .sort((a, b) => a.order - b.order);
+
+  return { item: device, rect, ports: layoutPortRow(relevantPorts, rect) };
 }
 
 function layoutPortRow(ports: Port[], deviceRect: Rect): PortLayout[] {

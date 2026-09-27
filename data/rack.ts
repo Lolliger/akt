@@ -118,6 +118,9 @@ const blende1: BlankPanel = {
   heightHU: 1,
 };
 
+// Recorder, Extender, KNX und Install-Node sitzen laut Vor-Ort-Angabe alle
+// nebeneinander in einer gemeinsamen HE (Reihenfolge links->rechts wie in
+// der ursprünglichen Beschreibung gelistet - noch vor Ort zu bestätigen).
 const dmxRecorder: Device = {
   id: "dmx-recorder",
   kind: "device",
@@ -125,7 +128,9 @@ const dmxRecorder: Device = {
   deviceType: "dmx-recorder",
   positionStartHU: 8,
   heightHU: 1,
-  notes: "Unabhängig vom normalen Netzwerkpfad, siehe dmx-node-2.",
+  columnIndex: 0,
+  columnCount: 4,
+  notes: "Unabhängig vom normalen Netzwerkpfad, siehe dmx-node-2. Reihenfolge innerhalb der HE noch zu bestätigen.",
   ports: [
     {
       id: "dmx-recorder.out",
@@ -145,8 +150,10 @@ const dmxExtender: Device = {
   kind: "device",
   name: "DMX Extender/Repeater",
   deviceType: "dmx-extender",
-  positionStartHU: 9,
+  positionStartHU: 8,
   heightHU: 1,
+  columnIndex: 1,
+  columnCount: 4,
   ports: [
     {
       id: "dmx-extender.in",
@@ -176,8 +183,10 @@ const knx: Device = {
   kind: "device",
   name: "KNX-Komponenten",
   deviceType: "knx",
-  positionStartHU: 10,
+  positionStartHU: 8,
   heightHU: 1,
+  columnIndex: 2,
+  columnCount: 4,
   notes: "Funktion und Verkabelung noch nicht vollständig bekannt.",
   ports: [
     {
@@ -201,8 +210,10 @@ const dmxNode1: Device = {
   manufacturer: "Showtec",
   model: "NET-2 Install",
   deviceType: "dmx-node",
-  positionStartHU: 11,
+  positionStartHU: 8,
   heightHU: 1,
+  columnIndex: 3,
+  columnCount: 4,
   notes:
     "Licht-Netzwerk → DMX/Netzwerk-Node → DMX (Aula-Lichtanlage). Ports laut Showtec NET-2 Install Datenblatt: 1x RJ45 Netzwerk, 2x Phoenix-DMX (je bidirektional konfigurierbar).",
   ports: [
@@ -243,7 +254,8 @@ const dmxNode1: Device = {
 
 // Zweiter Node, über den laut Beschreibung der Recorder-Output ins Netzwerk
 // geht. Liegt laut Vor-Ort-Angabe lose hinten im Rack (kein fester Rack-
-// Einbau) - Position hier nur als Platzhalter einsortiert.
+// Einbau) - deshalb ohne positionStartHU/heightHU, wird in Rack.looseDevices
+// geführt und außerhalb des HE-Rasters gezeichnet.
 const dmxNode2: Device = {
   id: "dmx-node-2",
   kind: "device",
@@ -251,10 +263,8 @@ const dmxNode2: Device = {
   manufacturer: "Showtec",
   model: "NET-2/5 Pocket",
   deviceType: "dmx-node",
-  positionStartHU: 12,
-  heightHU: 1,
   notes:
-    "Liegt lose hinten im Rack, keine feste HE-Position - hier nur als Platzhalter einsortiert. Ports laut Showtec NET-2/5 Pocket Datenblatt: 1x RJ45 Netzwerk, 2x 5-Pol-XLR-DMX (je bidirektional konfigurierbar).",
+    "Liegt lose hinten im Rack, keine feste HE-Position. Ports laut Showtec NET-2/5 Pocket Datenblatt: 1x RJ45 Netzwerk, 2x 5-Pol-XLR-DMX (je bidirektional konfigurierbar).",
   ports: [
     {
       id: "dmx-node-2.net",
@@ -296,7 +306,7 @@ const blende2: BlankPanel = {
   id: "blende-2",
   kind: "blank",
   label: "Blende",
-  positionStartHU: 13,
+  positionStartHU: 9,
   heightHU: 1,
 };
 
@@ -307,7 +317,7 @@ const ahm16: Device = {
   manufacturer: "Allen & Heath",
   model: "AHM-16",
   deviceType: "mixer",
-  positionStartHU: 14,
+  positionStartHU: 10,
   heightHU: 1,
   properties: { "option-karte": "Dante 64x64" },
   notes:
@@ -317,7 +327,7 @@ const ahm16: Device = {
       id: "ahm16.dante-primary",
       holderId: "ahm16",
       holderType: "device",
-      label: "Dante Primary",
+      label: "Dante Pri.",
       face: "rear",
       portKind: "rj45",
       signalType: "ton-netzwerk",
@@ -328,34 +338,34 @@ const ahm16: Device = {
       id: "ahm16.dante-secondary",
       holderId: "ahm16",
       holderType: "device",
-      label: "Dante Secondary",
+      label: "Dante Sec.",
       face: "rear",
       portKind: "rj45",
       signalType: "unbekannt",
       order: 2,
-      description: "EtherCON, Redundanz-Port der Dante-Karte, vermutlich ungenutzt.",
+      description: "Dante Secondary - EtherCON, Redundanz-Port der Dante-Karte, vermutlich ungenutzt.",
     },
     {
       id: "ahm16.dante-ctrl",
       holderId: "ahm16",
       holderType: "device",
-      label: "Dante Control Network",
+      label: "Dante Ctrl",
       face: "rear",
       portKind: "rj45",
       signalType: "unbekannt",
       order: 3,
-      description: "EtherCON, für Dante Controller Software.",
+      description: "Dante Control Network - EtherCON, für Dante Controller Software.",
     },
     {
       id: "ahm16.control-net",
       holderId: "ahm16",
       holderType: "device",
-      label: "Control Network",
+      label: "Ctrl Netw.",
       face: "rear",
       portKind: "rj45",
       signalType: "unbekannt",
       order: 4,
-      description: "RJ45 am Grundgerät, TCP/IP-Steuerung (System Manager) - eigenes Netzwerk oder gemeinsam mit Ton-Netzwerk? Noch zu prüfen.",
+      description: "Control Network - RJ45 am Grundgerät, TCP/IP-Steuerung (System Manager) - eigenes Netzwerk oder gemeinsam mit Ton-Netzwerk? Noch zu prüfen.",
     },
     {
       id: "ahm16.dx",
@@ -409,7 +419,7 @@ const induktionsschleife: Device = {
   manufacturer: "Univox",
   model: "SLS-1",
   deviceType: "induction-loop",
-  positionStartHU: 15,
+  positionStartHU: 11,
   heightHU: 2,
   notes:
     "Ports laut Univox SLS-1 Installationsanleitung. Genaue Steckertypen für Kopfhörer-/Monitorausgang und die tatsächlich genutzte Verkabelung noch vor Ort zu prüfen.",
@@ -510,7 +520,7 @@ export const rack: Rack = {
   name: "Technikrack",
   // Vorläufig aus den Einzelhöhen der Geräte summiert (siehe Geräte oben).
   // Noch nicht vor Ort vermessen/bestätigt.
-  heightUnits: 16,
+  heightUnits: 12,
   widthMm: 483,
   notes:
     "Gesamthöhe vorläufig aus Geräte-Einzelhöhen berechnet, noch nicht vor Ort vermessen.",
@@ -526,11 +536,12 @@ export const rack: Rack = {
     dmxExtender,
     knx,
     dmxNode1,
-    dmxNode2,
     blende2,
     ahm16,
     induktionsschleife,
   ],
+  // Liegt lose hinten im Rack, keine feste HE-Position (siehe dmxNode2 oben).
+  looseDevices: [dmxNode2],
   // Aula-Anschlüsse sind noch nicht erfasst (Nummerierung folgt vor Ort).
   externalEndpoints: [],
   // Verbindungen liegen in einer eigenen JSON-Datei (nicht in dieser

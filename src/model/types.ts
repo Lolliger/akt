@@ -73,29 +73,41 @@ export interface Port {
   description?: string;
 }
 
-interface RackItemBase {
+/** Ein Gerät, entweder im HE-Raster montiert (Rack.items) oder lose (Rack.looseDevices). */
+export interface Device {
   id: string;
-  /** Position von oben gezählt, 1 = oberste HE. */
-  positionStartHU: number;
-  heightHU: number;
-}
-
-/** Ein Gerät im Rack. */
-export interface Device extends RackItemBase {
   kind: "device";
   name: string;
   manufacturer?: string;
   model?: string;
   deviceType: DeviceType;
+  /**
+   * Position von oben gezählt, 1 = oberste HE. Nur gesetzt für Geräte in
+   * Rack.items; lose Geräte (Rack.looseDevices) lassen dies weg, weil sie
+   * keine feste Rack-Position haben.
+   */
+  positionStartHU?: number;
+  heightHU?: number;
+  /**
+   * Für Geräte, die sich eine HE mit anderen teilen (nebeneinander montiert,
+   * z.B. mehrere kleine Geräte in einem Installationsbereich). columnIndex
+   * zählt von links (0-basiert), columnCount ist die Gesamtzahl der Spalten
+   * in dieser HE.
+   */
+  columnIndex?: number;
+  columnCount?: number;
   /** Freie Zusatzeigenschaften, z.B. { managed: "true" }. */
   properties?: Record<string, string>;
   notes?: string;
   ports: Port[];
 }
 
-/** Eine Blende (freier HE-Platz ohne Gerät). */
-export interface BlankPanel extends RackItemBase {
+/** Eine Blende (freier HE-Platz ohne Gerät). Immer im HE-Raster montiert. */
+export interface BlankPanel {
+  id: string;
   kind: "blank";
+  positionStartHU: number;
+  heightHU: number;
   label?: string;
 }
 
@@ -130,6 +142,8 @@ export interface Rack {
   heightUnits: number;
   widthMm: number;
   items: RackItem[];
+  /** Geräte ohne feste HE-Position, z.B. lose im Rack liegende Boxen. */
+  looseDevices: Device[];
   externalEndpoints: ExternalEndpoint[];
   connections: Connection[];
   notes?: string;

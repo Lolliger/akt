@@ -1,16 +1,19 @@
 import { HU_HEIGHT_MM } from "../model/constants";
 import { isDevice, isBlankPanel } from "../model/types";
-import type { Rack, Face, Device } from "../model/types";
+import type { Rack, Face, Device, Port } from "../model/types";
 import { computeRackViewLayout } from "../layout/computeRackView";
 import { RAIL_WIDTH_MM } from "../layout/constants";
+import type { Rect } from "../layout/geometry";
 import { routeConnections } from "./routeConnections";
 import { svgEl, svgText } from "./svg";
-import { COLOR, STROKE, TYPE, accentFor } from "./style";
+import { COLOR, PORT_KIND_LABEL, STROKE, TYPE, accentFor } from "./style";
 
 const TOP_MARGIN_MM = 14;
 const BOTTOM_MARGIN_MM = 8;
 const RIGHT_MARGIN_MM = 10;
 const LANE_GAP_MM = 8;
+/** Mindestabstand zwischen zwei Beschriftungen in der gemeinsamen Label-Spalte. */
+const MIN_LABEL_GAP_MM = 3.4;
 
 const DEVICE_TYPE_LABEL: Record<Device["deviceType"], string> = {
   power: "Stromversorgung",
@@ -25,22 +28,36 @@ const DEVICE_TYPE_LABEL: Record<Device["deviceType"], string> = {
   sonstige: "",
 };
 
+interface Label {
+  text: string;
+  y: number;
+}
+
 /** Rendert eine komplette Rack-Ansicht (Vorder- oder Rückseite) als eigenständiges SVG. */
 export function renderRackView(rack: Rack, face: Face): SVGSVGElement {
   const layout = computeRackViewLayout(rack, face);
   const laneStartX = layout.frame.x + layout.frame.width + LANE_GAP_MM;
   const routing = routeConnections(rack, layout, laneStartX);
 
-  // Stub-Beschriftungen stehen hinter allen Kabelspuren, damit sich Text und
-  // Leitungen nicht überlagern; dafür braucht die Zeichenfläche genug Breite.
-  const stubLabelX = routing.laneExtentX + 4;
-  const maxStubLabelWidth = routing.stubs.reduce((max, stub) => {
-    const text = `${stub.connection.displayId} → ${stub.otherEndLabel}`;
-    return Math.max(max, estimateTextWidth(text, TYPE.connectionLabel));
-  }, 0);
+  // Alle Beschriftungen (durchgehende Verbindungen + Stubs) landen in einer
+  // gemeinsamen Spalte hinter allen Kabelspuren, statt direkt an der
+  // jeweiligen Linie zu kleben - so kollidieren weder Text mit Linien noch
+  // mehrere Labels untereinander (siehe placeLabels).
+  const labelX = routing.laneExtentX + 4;
+  const rawLabels: Label[] = [
+    ...routing.routed.map((r) => ({ text: r.connection.displayId, y: r.labelY })),
+    ...routing.stubs.map((s) => ({
+      text: `${s.connection.displayId} → ${s.otherEndLabel}`,
+      y: s.rect.y + s.rect.height / 2,
+    })),
+  ];
+  const placedLabels = placeLabels(rawLabels);
+  const maxLabelWidth = placedLabels.reduce(
+    (max, l) => Math.max(max, estimateTextWidth(l.text, TYPE.connectionLabel)),
+    0,
+  );
 
-  const canvasWidth =
-    Math.max(routing.laneExtentX, stubLabelX + maxStubLabelWidth) + RIGHT_MARGIN_MM;
+  const canvasWidth = Math.max(routing.laneExtentX, labelX + maxLabelWidth) + RIGHT_MARGIN_MM;
   const canvasHeight = layout.canvasHeightMm + TOP_MARGIN_MM + BOTTOM_MARGIN_MM;
   const originY = TOP_MARGIN_MM;
 
@@ -53,13 +70,7 @@ export function renderRackView(rack: Rack, face: Face): SVGSVGElement {
   });
 
   svg.appendChild(
-    svgEl("rect", {
-      x: 0,
-      y: 0,
-      width: canvasWidth,
-      height: canvasHeight,
-      fill: COLOR.paper,
-    }),
+    svgEl("rect", { x: 0, y: 0, width: canvasWidth, height: canvasHeight, fill: COLOR.paper }),
   );
 
   svg.appendChild(defs());
@@ -85,9 +96,28 @@ export function renderRackView(rack: Rack, face: Face): SVGSVGElement {
       continue;
     }
     if (isDevice(itemLayout.item)) {
-      g.appendChild(deviceGroup(itemLayout.item, itemLayout.rect));
+      g.appendChild(deviceGroup(itemLayout.item, itemLayout.rect, false));
       for (const portLayout of itemLayout.ports) {
         g.appendChild(portGroup(portLayout));
+      }
+    }
+  }
+
+  if (layout.looseItems.length > 0) {
+    g.appendChild(
+      svgText(
+        layout.looseItems[0].rect.x,
+        layout.looseItems[0].rect.y - 3,
+        "Lose Geräte (nicht fest im Rack verbaut)",
+        { "font-size": TYPE.deviceMeta, fill: COLOR.inkSoft, "font-style": "italic" },
+      ),
+    );
+    for (const itemLayout of layout.looseItems) {
+      if (isDevice(itemLayout.item)) {
+        g.appendChild(deviceGroup(itemLayout.item, itemLayout.rect, true));
+        for (const portLayout of itemLayout.ports) {
+          g.appendChild(portGroup(portLayout));
+        }
       }
     }
   }
@@ -97,38 +127,49 @@ export function renderRackView(rack: Rack, face: Face): SVGSVGElement {
     g.appendChild(connectionLine(routedConnection));
   }
   for (const stub of routing.stubs) {
-    g.appendChild(connectionStub(stub, stubMarkerX, stubLabelX));
+    g.appendChild(connectionStub(stub, stubMarkerX));
+  }
+  for (const label of placedLabels) {
+    g.appendChild(
+      svgText(labelX, label.y + TYPE.connectionLabel / 3, label.text, {
+        "font-size": TYPE.connectionLabel,
+        fill: COLOR.inkSoft,
+      }),
+    );
   }
 
   return svg;
 }
 
+/**
+ * Sortiert Labels nach ihrer natürlichen Höhe und schiebt jedes, das zu nah
+ * am vorherigen liegt, so weit nach unten, bis der Mindestabstand
+ * eingehalten ist. Verhindert, dass sich Beschriftungen unterschiedlicher
+ * Verbindungen gegenseitig überlagern.
+ */
+function placeLabels(labels: Label[]): Label[] {
+  const sorted = [...labels].sort((a, b) => a.y - b.y);
+  let prevY = -Infinity;
+  return sorted.map((label) => {
+    const y = Math.max(label.y, prevY + MIN_LABEL_GAP_MM);
+    prevY = y;
+    return { text: label.text, y };
+  });
+}
+
 function defs(): SVGDefsElement {
   const pattern = svgEl(
     "pattern",
-    {
-      id: "blank-hatch",
-      patternUnits: "userSpaceOnUse",
-      width: 4,
-      height: 4,
-      patternTransform: "rotate(45)",
-    },
+    { id: "blank-hatch", patternUnits: "userSpaceOnUse", width: 4, height: 4, patternTransform: "rotate(45)" },
     [
       svgEl("rect", { width: 4, height: 4, fill: COLOR.panelFill }),
-      svgEl("line", {
-        x1: 0,
-        y1: 0,
-        x2: 0,
-        y2: 4,
-        stroke: COLOR.blankHatch,
-        "stroke-width": STROKE.hairline,
-      }),
+      svgEl("line", { x1: 0, y1: 0, x2: 0, y2: 4, stroke: COLOR.blankHatch, "stroke-width": STROKE.hairline }),
     ],
   );
   return svgEl("defs", {}, [pattern]);
 }
 
-function rackFrame(rack: Rack, frame: { x: number; y: number; width: number; height: number }) {
+function rackFrame(rack: Rack, frame: Rect) {
   const g = svgEl("g");
 
   g.appendChild(
@@ -159,8 +200,6 @@ function rackFrame(rack: Rack, frame: { x: number; y: number; width: number; hei
     );
     for (let hu = 0; hu < rack.heightUnits; hu++) {
       const rowTop = frame.y + hu * HU_HEIGHT_MM;
-      // Zwei Löcher nahe Ober-/Unterkante statt mittig, damit sie nicht mit
-      // horizontal geführten Verbindungslinien auf halber Zeilenhöhe kollidieren.
       for (const cy of [rowTop + 6, rowTop + HU_HEIGHT_MM - 6]) {
         g.appendChild(
           svgEl("circle", {
@@ -179,7 +218,7 @@ function rackFrame(rack: Rack, frame: { x: number; y: number; width: number; hei
   return g;
 }
 
-function heRuler(rack: Rack, frame: { x: number; y: number; width: number; height: number }) {
+function heRuler(rack: Rack, frame: Rect) {
   const g = svgEl("g");
   for (let hu = 0; hu < rack.heightUnits; hu++) {
     const rowTop = frame.y + hu * HU_HEIGHT_MM;
@@ -214,10 +253,7 @@ function heRuler(rack: Rack, frame: { x: number; y: number; width: number; heigh
   return g;
 }
 
-function blankPanel(
-  rect: { x: number; y: number; width: number; height: number },
-  label: string,
-) {
+function blankPanel(rect: Rect, label: string) {
   const g = svgEl("g");
   g.appendChild(
     svgEl("rect", {
@@ -241,7 +277,7 @@ function blankPanel(
   return g;
 }
 
-function deviceGroup(device: Device, rect: { x: number; y: number; width: number; height: number }) {
+function deviceGroup(device: Device, rect: Rect, dashed: boolean) {
   const g = svgEl("g");
   g.appendChild(
     svgEl("rect", {
@@ -252,6 +288,7 @@ function deviceGroup(device: Device, rect: { x: number; y: number; width: number
       fill: COLOR.panelFill,
       stroke: COLOR.ink,
       "stroke-width": STROKE.regular,
+      "stroke-dasharray": dashed ? "3,1.6" : undefined,
     }),
   );
 
@@ -271,25 +308,17 @@ function deviceGroup(device: Device, rect: { x: number; y: number; width: number
 
   if (metaParts.length > 0) {
     g.appendChild(
-      svgText(
-        rect.x + 3,
-        rect.y + TYPE.deviceName + TYPE.deviceMeta + 3,
-        metaParts.join(" · "),
-        {
-          "font-size": TYPE.deviceMeta,
-          fill: COLOR.inkSoft,
-        },
-      ),
+      svgText(rect.x + 3, rect.y + TYPE.deviceName + TYPE.deviceMeta + 3, metaParts.join(" · "), {
+        "font-size": TYPE.deviceMeta,
+        fill: COLOR.inkSoft,
+      }),
     );
   }
 
   return g;
 }
 
-function portGroup(portLayout: {
-  port: { label: string; signalType?: string };
-  rect: { x: number; y: number; width: number; height: number };
-}) {
+function portGroup(portLayout: { port: Port; rect: Rect }) {
   const { port, rect } = portLayout;
   const g = svgEl("g");
   const accentHeight = 1.1;
@@ -306,77 +335,57 @@ function portGroup(portLayout: {
     }),
   );
   g.appendChild(
-    svgEl("rect", {
-      x: rect.x,
-      y: rect.y,
-      width: rect.width,
-      height: accentHeight,
-      fill: accentFor(port.signalType),
+    svgEl("rect", { x: rect.x, y: rect.y, width: rect.width, height: accentHeight, fill: accentFor(port.signalType) }),
+  );
+  const availableTextWidth = rect.width - 1;
+  g.appendChild(
+    svgText(rect.x + rect.width / 2, rect.y + accentHeight + TYPE.portLabel + 0.6, port.label, {
+      "font-size": fittedFontSize(port.label, availableTextWidth, TYPE.portLabel),
+      fill: COLOR.ink,
+      "text-anchor": "middle",
     }),
   );
+  const kindText = PORT_KIND_LABEL[port.portKind] ?? port.portKind;
   g.appendChild(
-    svgText(
-      rect.x + rect.width / 2,
-      rect.y + rect.height / 2 + TYPE.portLabel / 3 + accentHeight / 2,
-      port.label,
-      {
-        "font-size": TYPE.portLabel,
-        fill: COLOR.ink,
-        "text-anchor": "middle",
-      },
-    ),
-  );
-  return g;
-}
-
-function connectionLine(routedConnection: {
-  connection: { displayId: string; status: string };
-  path: string;
-  labelPos: { x: number; y: number };
-}) {
-  const { connection, path, labelPos } = routedConnection;
-  const g = svgEl("g");
-  g.appendChild(
-    svgEl("path", {
-      d: path,
-      fill: "none",
-      stroke: COLOR.ink,
-      "stroke-width": STROKE.connection,
-      "stroke-dasharray": connection.status === "bestaetigt" ? undefined : "2,1.4",
+    svgText(rect.x + rect.width / 2, rect.y + rect.height - 1.2, kindText, {
+      "font-size": fittedFontSize(kindText, availableTextWidth, TYPE.portKind),
+      fill: COLOR.inkSoft,
+      "text-anchor": "middle",
     }),
-  );
-  // Label neben statt auf der Linie platzieren, damit es lesbar bleibt.
-  g.appendChild(
-    svgEl(
-      "text",
-      {
-        x: labelPos.x + 1.4,
-        y: labelPos.y + TYPE.connectionLabel / 3,
-        "font-size": TYPE.connectionLabel,
-        fill: COLOR.inkSoft,
-      },
-      [connection.displayId],
-    ),
   );
   return g;
 }
 
 /**
- * Kurzer Stich für Verbindungen, deren Gegenstelle in dieser Ansicht nicht
- * sichtbar ist (z.B. Rückseiten-Port). Der Marker sitzt direkt am Rack-Rand,
- * die eigentliche Beschriftung steht separat hinter allen Kabelspuren, damit
- * sich Text und Leitungen nicht überlagern.
+ * Verkleinert die Schrift, wenn ein Label breiter als sein Port wäre, statt
+ * in den Nachbar-Port hinein zu überlaufen. Nach unten begrenzt, damit der
+ * Text nicht unleserlich klein wird.
  */
-function connectionStub(
-  stub: {
-    connection: { displayId: string; status: string };
-    rect: { x: number; y: number; width: number; height: number };
-    otherEndLabel: string;
-  },
-  markerX: number,
-  labelX: number,
-) {
-  const { connection, rect, otherEndLabel } = stub;
+function fittedFontSize(text: string, maxWidthMm: number, baseFontSizeMm: number): number {
+  const estimatedWidth = estimateTextWidth(text, baseFontSizeMm);
+  if (estimatedWidth <= maxWidthMm) return baseFontSizeMm;
+  const MIN_FONT_SIZE_MM = 1.3;
+  return Math.max(MIN_FONT_SIZE_MM, (baseFontSizeMm * maxWidthMm) / estimatedWidth);
+}
+
+function connectionLine(routedConnection: { connection: { status: string }; path: string }) {
+  const { connection, path } = routedConnection;
+  return svgEl("path", {
+    d: path,
+    fill: "none",
+    stroke: COLOR.ink,
+    "stroke-width": STROKE.connection,
+    "stroke-dasharray": connection.status === "bestaetigt" ? undefined : "2,1.4",
+  });
+}
+
+/**
+ * Kurzer Stich für Verbindungen, deren Gegenstelle in dieser Ansicht nicht
+ * sichtbar ist (z.B. Rückseiten-Port). Nur der Marker (Linie + Punkt) wird
+ * hier gezeichnet - die Textbeschriftung läuft zentral über placeLabels.
+ */
+function connectionStub(stub: { connection: { status: string }; rect: Rect }, markerX: number) {
+  const { connection, rect } = stub;
   const g = svgEl("g");
   const startX = rect.x + rect.width;
   const y = rect.y + rect.height / 2;
@@ -393,15 +402,7 @@ function connectionStub(
       "stroke-dasharray": connection.status === "bestaetigt" ? undefined : "2,1.4",
     }),
   );
-  g.appendChild(
-    svgEl("circle", { cx: endX, cy: y, r: 0.6, fill: COLOR.inkSoft }),
-  );
-  g.appendChild(
-    svgText(labelX, y + TYPE.connectionLabel / 3, `${connection.displayId} → ${otherEndLabel}`, {
-      "font-size": TYPE.connectionLabel,
-      fill: COLOR.inkSoft,
-    }),
-  );
+  g.appendChild(svgEl("circle", { cx: endX, cy: y, r: 0.6, fill: COLOR.inkSoft }));
   return g;
 }
 

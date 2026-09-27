@@ -17,6 +17,17 @@ export const COLOR = {
   portFillUnknown: "#f0f0ee",
 };
 
+export const PORT_KIND_LABEL: Record<string, string> = {
+  rj45: "RJ45",
+  xlr: "XLR",
+  dmx5: "DMX5",
+  "terminal-block": "Klemme",
+  "knx-bus": "KNX",
+  phoenix: "Phoenix",
+  schuko: "Schuko",
+  sonstige: "—",
+};
+
 export const SIGNAL_ACCENT: Record<SignalType, string> = {
   "ton-netzwerk": "#9a5b2e",
   "licht-netzwerk": "#a9821f",
@@ -39,6 +50,7 @@ export const TYPE = {
   deviceName: 3.1,
   deviceMeta: 2.1,
   portLabel: 2.0,
+  portKind: 1.5,
   ruler: 2.4,
   title: 5,
   connectionLabel: 1.9,
