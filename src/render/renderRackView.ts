@@ -48,7 +48,7 @@ export function renderRackView(rack: Rack, face: Face): SVGSVGElement {
     ...routing.routed.map((r) => ({ text: r.connection.displayId, y: r.labelY })),
     ...routing.stubs.map((s) => ({
       text: `${s.connection.displayId} → ${s.otherEndLabel}`,
-      y: s.rect.y + s.rect.height / 2,
+      y: s.dot.y,
     })),
   ];
   const placedLabels = placeLabels(rawLabels);
@@ -122,12 +122,11 @@ export function renderRackView(rack: Rack, face: Face): SVGSVGElement {
     }
   }
 
-  const stubMarkerX = layout.frame.x + layout.frame.width + 3;
   for (const routedConnection of routing.routed) {
     g.appendChild(connectionLine(routedConnection));
   }
   for (const stub of routing.stubs) {
-    g.appendChild(connectionStub(stub, stubMarkerX));
+    g.appendChild(connectionStub(stub));
   }
   for (const label of placedLabels) {
     g.appendChild(
@@ -381,28 +380,27 @@ function connectionLine(routedConnection: { connection: { status: string }; path
 
 /**
  * Kurzer Stich für Verbindungen, deren Gegenstelle in dieser Ansicht nicht
- * sichtbar ist (z.B. Rückseiten-Port). Nur der Marker (Linie + Punkt) wird
+ * sichtbar ist (z.B. Rückseiten-Port). Nur der Marker (Pfad + Punkt) wird
  * hier gezeichnet - die Textbeschriftung läuft zentral über placeLabels.
  */
-function connectionStub(stub: { connection: { status: string }; rect: Rect }, markerX: number) {
-  const { connection, rect } = stub;
+function connectionStub(stub: {
+  connection: { status: string };
+  path: string;
+  dot: { x: number; y: number };
+}) {
+  const { connection, path, dot } = stub;
   const g = svgEl("g");
-  const startX = rect.x + rect.width;
-  const y = rect.y + rect.height / 2;
-  const endX = Math.max(markerX, startX + 3);
 
   g.appendChild(
-    svgEl("line", {
-      x1: startX,
-      y1: y,
-      x2: endX,
-      y2: y,
+    svgEl("path", {
+      d: path,
+      fill: "none",
       stroke: COLOR.inkSoft,
       "stroke-width": STROKE.connection,
       "stroke-dasharray": connection.status === "bestaetigt" ? undefined : "2,1.4",
     }),
   );
-  g.appendChild(svgEl("circle", { cx: endX, cy: y, r: 0.6, fill: COLOR.inkSoft }));
+  g.appendChild(svgEl("circle", { cx: dot.x, cy: dot.y, r: 0.6, fill: COLOR.inkSoft }));
   return g;
 }
 
