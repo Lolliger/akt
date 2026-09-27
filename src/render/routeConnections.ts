@@ -4,7 +4,16 @@ import type { Rect } from "../layout/geometry";
 import type { PortLayout, RackViewLayout } from "../layout/types";
 
 /** Abstand zwischen parallelen Kabelspuren rechts vom Rack. */
-const LANE_SPACING_MM = 5;
+const LANE_SPACING_MM = 7;
+/**
+ * Schrittweite für den Höhenversatz am Port. Ohne diesen Versatz liegen die
+ * horizontalen Linienstücke zweier Verbindungen exakt übereinander, wenn sie
+ * aus derselben Geräte-Reihe kommen bzw. in dieselbe münden (alle Ports einer
+ * Reihe teilen sich eine Y-Koordinate) - der Spurabstand allein hilft dann
+ * nichts, weil nur das kurze Stück an der Spur selbst einen Versatz hätte.
+ */
+const EXIT_OFFSET_STEP_MM = 1.6;
+const EXIT_OFFSET_SLOTS = 5;
 
 export interface RoutedConnection {
   connection: Connection;
@@ -58,8 +67,10 @@ export function routeConnections(
 
     if (aVisible && bVisible) {
       const laneX = laneStartX + laneIndex * LANE_SPACING_MM;
+      routed.push(
+        buildRoutedConnection(connection, aVisible.rect, bVisible.rect, laneX, laneIndex),
+      );
       laneIndex += 1;
-      routed.push(buildRoutedConnection(connection, aVisible.rect, bVisible.rect, laneX));
       continue;
     }
 
@@ -82,9 +93,15 @@ function buildRoutedConnection(
   rectA: Rect,
   rectB: Rect,
   laneX: number,
+  laneIndex: number,
 ): RoutedConnection {
-  const yA = rectA.y + rectA.height / 2;
-  const yB = rectB.y + rectB.height / 2;
+  // Versatz innerhalb der Portbox, damit sich Linien aus/zu derselben Reihe
+  // nicht auf einer gemeinsamen Höhe überlagern (siehe EXIT_OFFSET_STEP_MM).
+  const slot = (laneIndex % EXIT_OFFSET_SLOTS) - Math.floor(EXIT_OFFSET_SLOTS / 2);
+  const exitOffset = slot * EXIT_OFFSET_STEP_MM;
+
+  const yA = rectA.y + rectA.height / 2 + exitOffset;
+  const yB = rectB.y + rectB.height / 2 + exitOffset;
   const exitA = rectA.x + rectA.width;
   const exitB = rectB.x + rectB.width;
 
