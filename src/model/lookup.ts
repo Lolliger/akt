@@ -37,3 +37,15 @@ export function describePort(rack: Rack, port: Port): string {
   const holderName = holder?.name ?? port.holderId;
   return `${holderName} · ${port.label}`;
 }
+
+/** Alle Ports gruppiert nach Gerät/externer Gegenstelle, für Auswahllisten im UI. */
+export function groupPortsByHolder(rack: Rack): { holderName: string; ports: Port[] }[] {
+  const groups: { holderName: string; ports: Port[] }[] = [];
+  for (const device of getDevices(rack)) {
+    if (device.ports.length > 0) groups.push({ holderName: device.name, ports: device.ports });
+  }
+  for (const endpoint of rack.externalEndpoints) {
+    if (endpoint.ports.length > 0) groups.push({ holderName: endpoint.name, ports: endpoint.ports });
+  }
+  return groups;
+}

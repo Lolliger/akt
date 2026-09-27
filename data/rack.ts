@@ -11,7 +11,8 @@
  * genannten Verbindungen. Aula-Anschlüsse, Rückseiten-Details, KNX- und
  * DMX-Feinverkabelung folgen, sobald sie vor Ort erfasst sind.
  */
-import type { BlankPanel, Device, Port, Rack } from "../src/model/types";
+import type { BlankPanel, Connection, Device, Port, Rack } from "../src/model/types";
+import connectionsData from "./connections.json";
 
 /** Erzeugt eine Reihe durchnummerierter Ports (z.B. für Patchpanel/Switch). */
 function portRow(
@@ -367,34 +368,8 @@ export const rack: Rack = {
   ],
   // Aula-Anschlüsse sind noch nicht erfasst (Nummerierung folgt vor Ort).
   externalEndpoints: [],
-  connections: [
-    {
-      id: "conn-ahm16-swton",
-      displayId: "K001",
-      portAId: "ahm16.net",
-      portBId: "sw-ton.01",
-      cableType: "cat6",
-      status: "bestaetigt",
-      description: "AHM-16 hängt am Ton-Netzwerkswitch.",
-    },
-    {
-      id: "conn-swlicht-dmxnode1",
-      displayId: "K002",
-      portAId: "sw-licht.01",
-      portBId: "dmx-node-1.net",
-      cableType: "cat6",
-      status: "bestaetigt",
-      description: "Licht-Netzwerk → DMX/Netzwerk-Node.",
-    },
-    {
-      id: "conn-recorder-node2",
-      displayId: "K003",
-      portAId: "dmx-recorder.out",
-      portBId: "dmx-node-2.dmx-in",
-      cableType: "dmx-cable",
-      status: "bestaetigt",
-      description:
-        "Recorder-Output geht über den zweiten Node ins Netzwerk (welcher Switch-Port dahinter liegt, ist noch offen).",
-    },
-  ],
+  // Verbindungen liegen in einer eigenen JSON-Datei (nicht in dieser
+  // TS-Datei), damit sie über das Formular im Browser gepflegt werden können,
+  // ohne Code zu bearbeiten. Siehe connections.json + vite.config.ts.
+  connections: connectionsData as Connection[],
 };

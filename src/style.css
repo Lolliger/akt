@@ -24,3 +24,68 @@ h1 {
   background: #ffffff;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
 }
+
+.connection-form {
+  max-width: 1100px;
+  background: #ffffff;
+  border: 1px solid #cfcfcb;
+  padding: 16px 20px 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
+}
+
+.connection-form h2 {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin: 0 0 12px;
+}
+
+.connection-form form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 12px;
+}
+
+.connection-form__field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: #4a4a4a;
+}
+
+.connection-form__field select,
+.connection-form__field input {
+  font-size: 13px;
+  padding: 5px 6px;
+  border: 1px solid #b8b8b4;
+  background: #ffffff;
+  min-width: 150px;
+}
+
+.connection-form button {
+  font-size: 13px;
+  padding: 7px 14px;
+  border: 1px solid #1a1a1a;
+  background: #1a1a1a;
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.connection-form button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.connection-form__message {
+  flex-basis: 100%;
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: #3c6e63;
+}
+
+.connection-form__message--error {
+  color: #8a3a3a;
+}

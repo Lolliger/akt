@@ -1,0 +1,29 @@
+[
+  {
+    "id": "conn-ahm16-swton",
+    "displayId": "K001",
+    "portAId": "ahm16.net",
+    "portBId": "sw-ton.01",
+    "cableType": "cat6",
+    "status": "bestaetigt",
+    "description": "AHM-16 hängt am Ton-Netzwerkswitch."
+  },
+  {
+    "id": "conn-swlicht-dmxnode1",
+    "displayId": "K002",
+    "portAId": "sw-licht.01",
+    "portBId": "dmx-node-1.net",
+    "cableType": "cat6",
+    "status": "bestaetigt",
+    "description": "Licht-Netzwerk → DMX/Netzwerk-Node."
+  },
+  {
+    "id": "conn-recorder-node2",
+    "displayId": "K003",
+    "portAId": "dmx-recorder.out",
+    "portBId": "dmx-node-2.dmx-in",
+    "cableType": "dmx-cable",
+    "status": "bestaetigt",
+    "description": "Recorder-Output geht über den zweiten Node ins Netzwerk (welcher Switch-Port dahinter liegt, ist noch offen)."
+  }
+]
